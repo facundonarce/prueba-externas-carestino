@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, TimeLog, Store } from './types';
+import { User, TimeLog, Store, Audit } from './types';
 import { Login } from './components/Login';
 import { Dashboard } from './components/Dashboard';
 import { AuditForm } from './components/AuditForm';
@@ -15,6 +15,7 @@ const App: React.FC = () => {
   const [userDatabase, setUserDatabase] = useState<Record<string, User & { password: string }>>({});
   const [timeLogs, setTimeLogs] = useState<TimeLog[]>([]);
   const [stores, setStores] = useState<Store[]>([]);
+  const [audits, setAudits] = useState<Audit[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   // --- DATA FETCHING ---
@@ -81,6 +82,26 @@ const App: React.FC = () => {
           distanceToStore: l.distance_to_store,
           locationAllowed: l.location_allowed
         })));
+      }
+
+      // 4. Fetch Audits
+      const { data: auditsData, error: auditsError } = await supabase
+        .from('audits')
+        .select('*')
+        .order('created_at', { ascending: false });
+        
+      if (auditsError) console.error('Error fetching audits:', auditsError);
+      if (auditsData) {
+          setAudits(auditsData.map((a: any) => ({
+              id: a.id,
+              created_at: a.created_at,
+              store_id: a.store_id,
+              user_id: a.user_id,
+              answers: a.answers,
+              photos: a.photos,
+              ai_report: a.ai_report,
+              score: a.score
+          })));
       }
 
     } catch (error) {
@@ -240,6 +261,7 @@ const App: React.FC = () => {
         stores={stores}
         onAddStore={handleAddStore}
         onUpdateStore={handleUpdateStore}
+        audits={audits}
       />
     );
   }
@@ -249,8 +271,12 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-50 p-4">
         <AuditForm 
-          onCancel={() => setView('dashboard')} 
+          onCancel={() => {
+              setView('dashboard');
+              fetchData(); // Refresh audits on exit
+          }} 
           stores={stores}
+          user={user}
         />
       </div>
     );

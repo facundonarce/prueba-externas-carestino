@@ -1,4 +1,6 @@
+
 import { createClient } from '@supabase/supabase-js';
+import { AuditFormState, AuditReport } from '../types';
 
 // 1. CREDENCIALES POR DEFECTO (Hardcoded Backup)
 // Configurado para proyecto: Prueba Externas Carestino (ID: eylylksptswpdmesqnvf)
@@ -57,7 +59,7 @@ const base64ToBlob = (base64: string): Blob => {
 
 /**
  * Sube la foto de evidencia al Bucket 'fichadas' de Supabase y retorna la URL pública.
- * Si falla, retorna null (o el base64 original si se prefiere fallback, pero aquí retornamos null para manejar error).
+ * Si falla, retorna null.
  */
 export const uploadEvidencePhoto = async (base64Image: string, userId: string): Promise<string | null> => {
     try {
@@ -88,5 +90,48 @@ export const uploadEvidencePhoto = async (base64Image: string, userId: string): 
     } catch (err) {
         console.error("Unexpected error uploading photo:", err);
         return null;
+    }
+};
+
+/**
+ * Guarda una auditoría completa en la base de datos, incluyendo la subida de todas las fotos asociadas.
+ */
+export const saveAudit = async (auditData: AuditFormState, report: AuditReport, userId: string): Promise<boolean> => {
+    try {
+        // 1. Subir todas las fotos primero
+        const photoUrls: Record<string, string> = {};
+        
+        // Iteramos sobre las fotos tomadas (clave: questionId, valor: base64)
+        for (const [questionId, base64] of Object.entries(auditData.photos)) {
+            // Generamos un "ID de usuario" compuesto para el nombre del archivo: audit_{userId}_{questionId}
+            const uniqueName = `audit_${userId}_q${questionId}`;
+            const url = await uploadEvidencePhoto(base64, uniqueName);
+            
+            if (url) {
+                photoUrls[questionId] = url;
+            }
+        }
+
+        // 2. Insertar el registro en la tabla audits
+        const { error } = await supabase.from('audits').insert({
+            store_id: auditData.storeId,
+            user_id: userId,
+            answers: auditData.answers,
+            photos: photoUrls, // Guardamos las URLs públicas, no el base64
+            ai_report: report,
+            score: report.score,
+            created_at: new Date().toISOString()
+        });
+
+        if (error) {
+            console.error("Error saving audit record:", error);
+            throw error;
+        }
+
+        return true;
+
+    } catch (error) {
+        console.error("Error in saveAudit process:", error);
+        return false;
     }
 };

@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
-import { User, TimeLog, Store } from '../types';
-import { LogOut, Users, Clock, Search, Shield, Plus, Upload, X, AlertTriangle, ShieldAlert, Shirt, CheckCircle, Store as StoreIcon, Pencil, MapPin, Eye, ExternalLink, Calendar } from 'lucide-react';
+import { User, TimeLog, Store, Audit } from '../types';
+import { LogOut, Users, Clock, Search, Shield, Plus, Upload, X, AlertTriangle, ShieldAlert, Shirt, CheckCircle, Store as StoreIcon, Pencil, MapPin, Eye, ExternalLink, Calendar, FileText, ChevronRight } from 'lucide-react';
 
 interface AdminDashboardProps {
   user: User;
@@ -13,16 +13,20 @@ interface AdminDashboardProps {
   stores: Store[];
   onAddStore: (store: Store) => void;
   onUpdateStore: (store: Store) => void;
+  audits: Audit[];
 }
 
 export const AdminDashboard: React.FC<AdminDashboardProps> = ({ 
   user, onLogout, userDatabase, onAddUser, onUpdateUser, logs, 
-  stores, onAddStore, onUpdateStore 
+  stores, onAddStore, onUpdateStore, audits
 }) => {
-  const [activeTab, setActiveTab] = useState<'logs' | 'users' | 'stores'>('logs');
+  const [activeTab, setActiveTab] = useState<'logs' | 'users' | 'stores' | 'audits'>('logs');
   
   // -- LOG DETAIL MODAL STATE --
   const [selectedLog, setSelectedLog] = useState<TimeLog | null>(null);
+  
+  // -- AUDIT DETAIL MODAL STATE --
+  const [selectedAudit, setSelectedAudit] = useState<Audit | null>(null);
 
   // -- USER MODAL STATE --
   const [showUserModal, setShowUserModal] = useState(false);
@@ -197,6 +201,17 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
             Fichadas
           </button>
           <button
+            onClick={() => setActiveTab('audits')}
+            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap ${
+              activeTab === 'audits' 
+                ? 'bg-carestino-500 text-white shadow-lg shadow-carestino-200' 
+                : 'bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <FileText className="w-5 h-5" />
+            Auditorías
+          </button>
+          <button
             onClick={() => setActiveTab('users')}
             className={`flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-all whitespace-nowrap ${
               activeTab === 'users' 
@@ -324,6 +339,90 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Content - Audits */}
+        {activeTab === 'audits' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden animate-in fade-in">
+             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
+              <h2 className="text-lg font-bold text-slate-800">Historial de Auditorías</h2>
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                <input 
+                  type="text" 
+                  placeholder="Buscar sucursal..." 
+                  className="pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-carestino-500 outline-none"
+                />
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
+                   <tr>
+                    <th className="px-6 py-4 font-semibold">Fecha</th>
+                    <th className="px-6 py-4 font-semibold">Sucursal</th>
+                    <th className="px-6 py-4 font-semibold">Auditor</th>
+                    <th className="px-6 py-4 font-semibold">Puntaje</th>
+                    <th className="px-6 py-4 font-semibold">Problemas Críticos</th>
+                    <th className="px-6 py-4 font-semibold text-right">Detalle</th>
+                   </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                   {audits.map((audit) => {
+                     const store = stores.find(s => s.id === audit.store_id);
+                     const auditor = userDatabase[audit.user_id];
+                     return (
+                       <tr key={audit.id} className="hover:bg-slate-50 transition-colors">
+                          <td className="px-6 py-4 text-sm text-slate-600">
+                             {new Date(audit.created_at).toLocaleDateString()}
+                             <div className="text-xs text-slate-400">{new Date(audit.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                          </td>
+                          <td className="px-6 py-4 font-bold text-slate-700">
+                             {store ? store.name : audit.store_id}
+                          </td>
+                          <td className="px-6 py-4 text-sm text-slate-600">
+                             {auditor ? auditor.fullName : audit.user_id}
+                          </td>
+                          <td className="px-6 py-4">
+                             <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                               audit.score >= 90 ? 'bg-green-100 text-green-700' :
+                               audit.score >= 70 ? 'bg-yellow-100 text-yellow-700' :
+                               'bg-red-100 text-red-700'
+                             }`}>
+                               {audit.score}/100
+                             </span>
+                          </td>
+                          <td className="px-6 py-4">
+                             {audit.ai_report.criticalIssues.length > 0 ? (
+                               <span className="flex items-center gap-1 text-red-600 text-xs font-bold">
+                                 <AlertTriangle className="w-3 h-3" />
+                                 {audit.ai_report.criticalIssues.length} Detectados
+                               </span>
+                             ) : (
+                               <span className="text-green-600 text-xs font-bold flex items-center gap-1">
+                                 <CheckCircle className="w-3 h-3" />
+                                 Sin problemas
+                               </span>
+                             )}
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button 
+                               onClick={() => setSelectedAudit(audit)}
+                               className="text-carestino-500 hover:text-carestino-700 font-medium text-sm flex items-center justify-end gap-1"
+                            >
+                               Ver Reporte <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </td>
+                       </tr>
+                     );
+                   })}
+                </tbody>
+              </table>
+              {audits.length === 0 && (
+                 <div className="p-8 text-center text-slate-500 text-sm">No hay auditorías registradas.</div>
+              )}
             </div>
           </div>
         )}
@@ -562,6 +661,93 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
              </div>
           </div>
         </div>
+      )}
+
+      {/* Modal - Audit Detail */}
+      {selectedAudit && (
+         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden max-h-[90vh] overflow-y-auto">
+                 <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50 sticky top-0 z-10">
+                     <div>
+                         <h3 className="font-bold text-xl text-slate-800">Reporte de Auditoría</h3>
+                         <p className="text-xs text-slate-500">ID: {selectedAudit.id}</p>
+                     </div>
+                     <button onClick={() => setSelectedAudit(null)} className="text-slate-400 hover:text-slate-600">
+                         <X className="w-6 h-6" />
+                     </button>
+                 </div>
+                 
+                 <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-6">
+                     <div className="md:col-span-1 space-y-4">
+                         <div className={`p-6 rounded-xl border text-center ${
+                             selectedAudit.score >= 90 ? 'bg-green-50 border-green-200 text-green-800' :
+                             selectedAudit.score >= 70 ? 'bg-yellow-50 border-yellow-200 text-yellow-800' :
+                             'bg-red-50 border-red-200 text-red-800'
+                         }`}>
+                             <div className="text-4xl font-black">{selectedAudit.score}</div>
+                             <div className="text-xs font-bold uppercase mt-1">Puntaje General</div>
+                         </div>
+                         
+                         <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                             <div className="flex flex-col gap-2">
+                                 <div>
+                                     <span className="text-xs text-slate-400 font-bold uppercase">Sucursal</span>
+                                     <p className="font-bold text-slate-800">{stores.find(s => s.id === selectedAudit.store_id)?.name}</p>
+                                 </div>
+                                 <div>
+                                     <span className="text-xs text-slate-400 font-bold uppercase">Auditor</span>
+                                     <p className="font-medium text-slate-700">{userDatabase[selectedAudit.user_id]?.fullName || selectedAudit.user_id}</p>
+                                 </div>
+                                 <div>
+                                     <span className="text-xs text-slate-400 font-bold uppercase">Fecha</span>
+                                     <p className="font-medium text-slate-700">{new Date(selectedAudit.created_at).toLocaleString()}</p>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
+                     
+                     <div className="md:col-span-2 space-y-6">
+                         <div>
+                             <h4 className="font-bold text-lg text-slate-800 mb-2">Resumen Ejecutivo</h4>
+                             <p className="text-slate-600 bg-slate-50 p-4 rounded-lg border border-slate-100">
+                                 {selectedAudit.ai_report.summary}
+                             </p>
+                         </div>
+
+                         {selectedAudit.ai_report.criticalIssues.length > 0 && (
+                             <div>
+                                 <h4 className="font-bold text-lg text-red-600 mb-2 flex items-center gap-2">
+                                     <AlertTriangle className="w-5 h-5" />
+                                     Hallazgos Críticos
+                                 </h4>
+                                 <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                                     {selectedAudit.ai_report.criticalIssues.map((issue, i) => (
+                                         <li key={i}>{issue}</li>
+                                     ))}
+                                 </ul>
+                             </div>
+                         )}
+                         
+                         <div>
+                             <h4 className="font-bold text-lg text-carestino-600 mb-2">Evidencias Fotográficas</h4>
+                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                 {Object.entries(selectedAudit.photos).map(([key, url]) => (
+                                     <a key={key} href={url} target="_blank" rel="noopener noreferrer" className="block relative group aspect-square bg-slate-100 rounded-lg overflow-hidden">
+                                         <img src={url} alt="Evidencia" className="w-full h-full object-cover transition-transform group-hover:scale-110" />
+                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                                             <ExternalLink className="text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                         </div>
+                                     </a>
+                                 ))}
+                                 {Object.keys(selectedAudit.photos).length === 0 && (
+                                     <p className="text-slate-400 italic text-sm">No se adjuntaron fotos.</p>
+                                 )}
+                             </div>
+                         </div>
+                     </div>
+                 </div>
+             </div>
+         </div>
       )}
 
       {/* Modal - Add/Edit User */}

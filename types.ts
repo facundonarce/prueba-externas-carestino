@@ -40,6 +40,17 @@ export interface AuditReport {
   recommendations: string[];
 }
 
+export interface Audit {
+  id: number;
+  created_at: string;
+  store_id: string;
+  user_id: string;
+  answers: Record<string, string>;
+  photos: Record<string, string>;
+  ai_report: AuditReport;
+  score: number;
+}
+
 export interface TimeLog {
   id: string;
   userId: string;

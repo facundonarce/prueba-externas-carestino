@@ -1,14 +1,17 @@
+
 import React, { useState, useRef, useEffect } from 'react';
-import { QUESTIONS, AuditFormState, AuditReport, Store, Question } from '../types';
+import { QUESTIONS, AuditFormState, AuditReport, Store, Question, User } from '../types';
 import { Camera, Trash2, CheckCircle, AlertTriangle, Loader2, Save, FileText, ArrowLeft, RotateCw } from 'lucide-react';
 import { generateAuditAnalysis } from '../services/geminiService';
+import { saveAudit } from '../services/supabaseClient';
 
 interface AuditFormProps {
   onCancel: () => void;
   stores: Store[];
+  user: User;
 }
 
-export const AuditForm: React.FC<AuditFormProps> = ({ onCancel, stores }) => {
+export const AuditForm: React.FC<AuditFormProps> = ({ onCancel, stores, user }) => {
   const [step, setStep] = useState<'form' | 'review' | 'analysis'>('form');
   const [formData, setFormData] = useState<AuditFormState>({
     storeId: '',
@@ -16,6 +19,7 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onCancel, stores }) => {
     photos: {}
   });
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [report, setReport] = useState<AuditReport | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,7 +36,6 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onCancel, stores }) => {
       const newAnswers = { ...prev.answers, [questionId]: value };
       
       // Clean up children questions if parent value changes causing them to hide
-      // This is a simple cleanup to avoid submitting stale data
       const visibleQIds = QUESTIONS.filter(q => {
         if (!q.dependsOn) return true;
         // Check dependency against NEW answers
@@ -98,6 +101,26 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onCancel, stores }) => {
     } finally {
       setIsAnalyzing(false);
     }
+  };
+
+  const handleSaveAudit = async () => {
+      if (!report) return;
+      
+      setIsSaving(true);
+      try {
+          const success = await saveAudit(formData, report, user.username);
+          if (success) {
+              alert("Auditoría guardada exitosamente.");
+              onCancel(); // Volver al dashboard
+          } else {
+              alert("Hubo un error guardando la auditoría. Intente nuevamente.");
+          }
+      } catch (e) {
+          console.error(e);
+          alert("Error de conexión.");
+      } finally {
+          setIsSaving(false);
+      }
   };
 
   // Logic to determine if form is complete
@@ -287,13 +310,18 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onCancel, stores }) => {
   };
 
   const renderAnalysis = () => {
-    if (isAnalyzing) {
+    if (isAnalyzing || isSaving) {
       return (
         <div className="flex flex-col items-center justify-center h-96 animate-in fade-in">
           <Loader2 className="w-16 h-16 text-carestino-500 animate-spin mb-6" />
-          <h3 className="text-xl font-bold text-slate-800">Analizando Auditoría...</h3>
+          <h3 className="text-xl font-bold text-slate-800">
+            {isSaving ? "Guardando Auditoría..." : "Analizando Auditoría..."}
+          </h3>
           <p className="text-slate-500 text-center mt-2 max-w-xs">
-            Gemini AI está procesando sus respuestas e imágenes para generar un reporte de cumplimiento.
+            {isSaving 
+               ? "Subiendo evidencias y registrando resultados en la base de datos segura." 
+               : "Gemini AI está procesando sus respuestas e imágenes para generar un reporte de cumplimiento."
+            }
           </p>
         </div>
       );
@@ -367,8 +395,8 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onCancel, stores }) => {
         </div>
 
         <button
-          onClick={onCancel}
-          className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-black transition-colors flex items-center justify-center gap-2"
+          onClick={handleSaveAudit}
+          className="w-full py-4 bg-slate-900 text-white font-bold rounded-xl hover:bg-black transition-colors flex items-center justify-center gap-2 shadow-xl shadow-slate-200"
         >
           <Save className="w-5 h-5" />
           Finalizar y Guardar Auditoría
@@ -383,7 +411,7 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onCancel, stores }) => {
         <h2 className="text-2xl font-bold text-slate-800">
           {step === 'form' ? 'Nueva Auditoría Externa' : step === 'review' ? 'Revisión' : 'Reporte IA'}
         </h2>
-        {step !== 'analysis' && (
+        {(step !== 'analysis' && !isSaving) && (
           <button onClick={onCancel} className="text-slate-400 hover:text-slate-600 font-medium">
             Cancelar
           </button>
