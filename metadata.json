@@ -1,0 +1,8 @@
+{
+  "name": "Auditorias Carestino",
+  "description": "Professional retail audit application with AI-powered analysis and photo verification.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
