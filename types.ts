@@ -1,5 +1,4 @@
 
-
 export interface User {
   username: string;
   fullName: string;
@@ -22,16 +21,16 @@ export interface Question {
   id: string;
   text: string;
   category: string;
-  type: 'select' | 'text'; // New: Support text input
-  options?: string[]; // Only for select
-  dependsOn?: { questionId: string; value: string }; // New: Conditional visibility
-  photoRequiredIf?: string[]; // New: Values that force a photo requirement
+  type: 'select' | 'text'; 
+  options?: string[]; 
+  dependsOn?: { questionId: string; value: string }; 
+  photoRequiredIf?: string[]; 
 }
 
 export interface AuditFormState {
   storeId: string;
-  answers: Record<string, string>; // questionId -> answer
-  photos: Record<string, string>; // questionId -> base64 string
+  answers: Record<string, string>; 
+  photos: Record<string, string>; 
 }
 
 export interface AuditReport {
@@ -45,66 +44,29 @@ export interface TimeLog {
   id: string;
   userId: string;
   userFullName: string;
-  userPhotoUrl: string; // The specific selfie taken at that time
-  storeId?: string; // New: Where did they clock in?
-  storeName?: string; // New: Readable name
+  userPhotoUrl: string; 
+  storeId?: string; 
+  storeName?: string; 
   type: 'INGRESO' | 'EGRESO';
   timestamp: string; // ISO string
-  hasIncident: boolean; // Flag for identity OR location mismatch
-  incidentDetail?: string; // Reason for the incident
-  identityScore: number; // 0-100% confidence match
-  uniformCompliant: boolean; // Does clothing match requirements?
-  uniformDetails?: string; // Details about clothing
+  hasIncident: boolean; 
+  incidentDetail?: string; 
+  identityScore: number; 
+  uniformCompliant: boolean; 
+  uniformDetails?: string; 
   
   // Location Data
   location?: { lat: number; lng: number };
-  distanceToStore?: number; // In meters
-  locationAllowed?: boolean; // True if within radius
+  distanceToStore?: number; 
+  locationAllowed?: boolean; 
 }
 
-export const STORES: Store[] = [
-  // Coords example: Buenos Aires Obelisco area
-  { id: 'STORE-001', name: 'Sucursal Centro', address: 'Av. Corrientes 1234', lat: -34.603722, lng: -58.381592 }, 
-  // Coords example: Palermo
-  { id: 'STORE-002', name: 'Sucursal Norte', address: 'Av. Santa Fe 4500', lat: -34.576837, lng: -58.423405 },
-  // Coords example: Belgrano
-  { id: 'STORE-003', name: 'Sucursal Sur', address: 'Av. Cabildo 2000', lat: -34.561492, lng: -58.456391 },
-];
+// Datos iniciales vacíos, se cargarán desde Supabase
+export const STORES: Store[] = [];
+export const USERS: Record<string, User & { password: string }> = {};
+export const MOCK_TIME_LOGS: TimeLog[] = [];
 
-// Mock Database of Auditors & Admin
-export const USERS: Record<string, User & { password: string }> = {
-  'auditor': {
-    username: 'auditor',
-    password: '1234',
-    fullName: 'Juan Pérez',
-    role: 'auditor',
-    jobTitle: 'Auditor Senior de Campo',
-    photoUrl: 'https://ui-avatars.com/api/?name=Juan+Perez&background=FF5100&color=fff&size=256',
-    requiredUniform: 'Buzo o campera negra',
-    assignedStoreIds: ['STORE-001', 'STORE-002'] // Can access Center and North
-  },
-  'manager': {
-    username: 'manager',
-    password: 'admin',
-    fullName: 'Maria González',
-    role: 'manager',
-    jobTitle: 'Gerente Regional',
-    photoUrl: 'https://ui-avatars.com/api/?name=Maria+G&background=0D8ABC&color=fff&size=256',
-    requiredUniform: 'Saco o ropa formal',
-    assignedStoreIds: ['STORE-001'] // Only Center
-  },
-  'admin': {
-    username: 'admin',
-    password: 'admin123',
-    fullName: 'Soporte IT',
-    role: 'admin',
-    jobTitle: 'Administrador del Sistema',
-    photoUrl: 'https://ui-avatars.com/api/?name=Admin+IT&background=333&color=fff&size=256',
-    requiredUniform: 'Sin restricción',
-    assignedStoreIds: [] // Admin sees all via dashboard
-  }
-};
-
+// Preguntas fijas del sistema (Módulo Depósito)
 export const QUESTIONS: Question[] = [
   {
     id: 'dep_01',
@@ -206,57 +168,5 @@ export const QUESTIONS: Question[] = [
     type: 'select',
     options: ['Buena', 'Regular', 'Mala'],
     photoRequiredIf: ['Regular', 'Mala']
-  }
-];
-
-// Mock Time Logs for Admin View
-export const MOCK_TIME_LOGS: TimeLog[] = [
-  {
-    id: 'log-1',
-    userId: 'auditor',
-    userFullName: 'Juan Pérez',
-    userPhotoUrl: 'https://ui-avatars.com/api/?name=Juan+Perez&background=FF5100&color=fff&size=256',
-    storeId: 'STORE-001',
-    storeName: 'Sucursal Centro',
-    type: 'INGRESO',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 4).toISOString(), // 4 hours ago
-    hasIncident: false,
-    identityScore: 98,
-    uniformCompliant: true,
-    uniformDetails: 'Lleva buzo negro correctamente.',
-    locationAllowed: true,
-    distanceToStore: 15
-  },
-  {
-    id: 'log-2',
-    userId: 'manager',
-    userFullName: 'Maria González',
-    userPhotoUrl: 'https://ui-avatars.com/api/?name=Maria+G&background=0D8ABC&color=fff&size=256',
-    storeId: 'STORE-001',
-    storeName: 'Sucursal Centro',
-    type: 'INGRESO',
-    timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-    hasIncident: false,
-    identityScore: 95,
-    uniformCompliant: true,
-    uniformDetails: 'Vestimenta formal correcta.',
-    locationAllowed: true,
-    distanceToStore: 5
-  },
-  {
-    id: 'log-3',
-    userId: 'auditor',
-    userFullName: 'Juan Pérez',
-    userPhotoUrl: 'https://ui-avatars.com/api/?name=Juan+Perez&background=FF5100&color=fff&size=256',
-    storeId: 'STORE-001',
-    storeName: 'Sucursal Centro',
-    type: 'EGRESO',
-    timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 mins ago
-    hasIncident: false,
-    identityScore: 99,
-    uniformCompliant: true,
-    uniformDetails: 'Mantiene uniforme.',
-    locationAllowed: true,
-    distanceToStore: 20
   }
 ];
