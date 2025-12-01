@@ -1,8 +1,8 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { User, TimeLog } from '../types';
 import { Lock, User as UserIcon, ArrowRight, Loader2, Camera, ShieldCheck, AlertCircle, LogIn, LogOut, CheckCircle, AlertTriangle, Shirt, ShieldAlert, RotateCw, XCircle, Store, MapPin, Navigation, Clock } from 'lucide-react';
 import { verifyUserIdentity, VerificationResult } from '../services/geminiService';
+import { uploadEvidencePhoto } from '../services/supabaseClient';
 
 interface LoginProps {
   onLogin: (user: User) => void;
@@ -12,7 +12,7 @@ interface LoginProps {
   timeLogs: TimeLog[];
 }
 
-type LoginStep = 'credentials' | 'store_selection' | 'checking_location' | 'clock_selection' | 'camera' | 'verifying' | 'verification_failed' | 'success_exit' | 'success_entry';
+type LoginStep = 'credentials' | 'store_selection' | 'checking_location' | 'clock_selection' | 'camera' | 'verifying' | 'uploading' | 'verification_failed' | 'success_exit' | 'success_entry';
 
 // Haversine formula to calculate distance in meters
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -224,7 +224,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
         }
 
         // If verified, proceed directly
-        processSuccessfulLog(result, dataUrl);
+        await processSuccessfulLog(result, dataUrl);
 
       } catch (err) {
         setError("Error de conexión durante la validación.");
@@ -234,8 +234,22 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
     }
   };
 
-  const processSuccessfulLog = (result: VerificationResult, image: string) => {
+  const processSuccessfulLog = async (result: VerificationResult, imageBase64: string) => {
     if (!pendingUser) return;
+
+    // Show uploading state if possible or keep 'verifying' loader visually
+    setStep('uploading');
+
+    // 1. Upload Image to Supabase Storage
+    let finalPhotoUrl = imageBase64; // Fallback to base64 if upload fails
+    try {
+      const publicUrl = await uploadEvidencePhoto(imageBase64, username);
+      if (publicUrl) {
+        finalPhotoUrl = publicUrl;
+      }
+    } catch (e) {
+      console.error("Failed to upload image, using base64 fallback", e);
+    }
 
     // Logic to determine if there is an incident
     const identityFailed = !result.verified;
@@ -269,7 +283,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
       id: `log-${Date.now()}`,
       userId: username,
       userFullName: pendingUser.fullName,
-      userPhotoUrl: image,
+      userPhotoUrl: finalPhotoUrl, // Now using the Storage URL
       storeId: selectedStore?.id,
       storeName: selectedStore?.name,
       type: clockAction || 'INGRESO',
@@ -306,9 +320,9 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
     setTimeout(startCamera, 100);
   };
 
-  const handleForceClockIn = () => {
+  const handleForceClockIn = async () => {
     if (failedResult && capturedImage) {
-      processSuccessfulLog(failedResult, capturedImage);
+      await processSuccessfulLog(failedResult, capturedImage);
     }
   };
 
@@ -613,6 +627,20 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
     </div>
   );
 
+  const renderUploading = () => (
+    <div className="p-12 flex flex-col items-center text-center animate-in fade-in duration-300">
+      <div className="relative w-24 h-24 mb-6">
+        <div className="absolute inset-0 border-4 border-carestino-100 rounded-full"></div>
+        <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+        <Camera className="absolute inset-0 m-auto text-blue-500 w-10 h-10 animate-pulse" />
+      </div>
+      <h3 className="text-xl font-bold text-slate-800 mb-2">Guardando Evidencia</h3>
+      <p className="text-slate-500 max-w-xs text-sm">
+        Subiendo fotografía a la nube segura...
+      </p>
+    </div>
+  );
+
   const renderVerificationFailed = () => (
     <div className="p-8 flex flex-col items-center text-center animate-in fade-in slide-in-from-bottom-4">
       <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-5 animate-pulse">
@@ -767,6 +795,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
              step === 'success_exit' ? <LogOut className="w-8 h-8 text-white" /> :
              step === 'success_entry' ? <LogIn className="w-8 h-8 text-white" /> :
              step === 'verification_failed' ? <ShieldAlert className="w-8 h-8 text-white" /> :
+             step === 'uploading' ? <Camera className="w-8 h-8 text-white animate-pulse" /> :
              <Camera className="w-8 h-8 text-white" />
             }
           </div>
@@ -778,6 +807,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
              step === 'clock_selection' ? 'Control de Asistencia' :
              step === 'success_exit' || step === 'success_entry' ? 'Registro Procesado' :
              step === 'verification_failed' ? 'Atención Requerida' :
+             step === 'uploading' ? 'Guardando Evidencia' :
              'Validación Biométrica'}
           </p>
         </div>
@@ -788,6 +818,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
         {step === 'clock_selection' && renderClockSelection()}
         {step === 'camera' && renderCameraView()}
         {step === 'verifying' && renderVerifying()}
+        {step === 'uploading' && renderUploading()}
         {step === 'verification_failed' && renderVerificationFailed()}
         {step === 'success_exit' && renderResult('¡Hasta mañana!', 'Tu horario de salida ha sido registrado.')}
         {step === 'success_entry' && renderResult('¡Bienvenido!', 'Ingreso registrado correctamente.')}

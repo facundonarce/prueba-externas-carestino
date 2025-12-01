@@ -38,3 +38,55 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export const supabase = createClient(supabaseUrl || "https://placeholder.supabase.co", supabaseAnonKey || "placeholder");
+
+/**
+ * Convierte un Data URL (Base64) a un objeto Blob para poder subirlo como archivo.
+ */
+const base64ToBlob = (base64: string): Blob => {
+    const arr = base64.split(',');
+    const mimeMatch = arr[0].match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/jpeg';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+        u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+};
+
+/**
+ * Sube la foto de evidencia al Bucket 'fichadas' de Supabase y retorna la URL pública.
+ * Si falla, retorna null (o el base64 original si se prefiere fallback, pero aquí retornamos null para manejar error).
+ */
+export const uploadEvidencePhoto = async (base64Image: string, userId: string): Promise<string | null> => {
+    try {
+        const blob = base64ToBlob(base64Image);
+        const timestamp = Date.now();
+        const fileName = `${userId}_${timestamp}.jpg`;
+        const filePath = `${fileName}`; // Se guarda en la raíz del bucket fichadas
+
+        const { data, error } = await supabase.storage
+            .from('fichadas')
+            .upload(filePath, blob, {
+                contentType: 'image/jpeg',
+                upsert: false
+            });
+
+        if (error) {
+            console.error("Error uploading photo to Supabase:", error);
+            return null;
+        }
+
+        // Obtener URL pública
+        const { data: publicUrlData } = supabase.storage
+            .from('fichadas')
+            .getPublicUrl(filePath);
+
+        return publicUrlData.publicUrl;
+
+    } catch (err) {
+        console.error("Unexpected error uploading photo:", err);
+        return null;
+    }
+};
