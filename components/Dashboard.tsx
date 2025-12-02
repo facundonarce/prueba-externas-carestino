@@ -11,8 +11,8 @@ interface DashboardProps {
 export const Dashboard: React.FC<DashboardProps> = ({ user, onStartAudit, onLogout }) => {
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
+      {/* Header with Safe Area adjustment */}
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-20 pt-safe">
         <div className="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-carestino-500 rounded-lg flex items-center justify-center">
@@ -37,7 +37,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ user, onStartAudit, onLogo
       </header>
 
       {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 py-8">
+      <main className="max-w-5xl mx-auto px-4 py-8 pb-safe">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-carestino-500 rounded-2xl p-6 text-white shadow-lg shadow-carestino-200 flex flex-col justify-between h-48 relative overflow-hidden group cursor-pointer transition-transform hover:scale-[1.02]" onClick={onStartAudit}>
             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">

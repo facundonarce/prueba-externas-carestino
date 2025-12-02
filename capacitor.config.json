@@ -1,0 +1,8 @@
+{
+  "appId": "com.carestino.auditorias",
+  "appName": "Auditorias Carestino",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
