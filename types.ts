@@ -1,4 +1,10 @@
 
+export interface WorkSchedule {
+  day: string;   // "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"
+  start: string; // "HH:mm" (e.g., "20:00")
+  end: string;   // "HH:mm" (e.g., "04:00")
+}
+
 export interface User {
   username: string;
   fullName: string;
@@ -6,7 +12,8 @@ export interface User {
   jobTitle: string;
   photoUrl: string; // Reference photo URL or Base64
   requiredUniform?: string; // Configurable uniform description
-  assignedStoreIds?: string[]; // New: List of store IDs this user can access
+  assignedStoreIds?: string[]; // List of store IDs this user can access
+  workSchedule?: WorkSchedule[]; // New: Array of assigned shifts
 }
 
 export interface Store {

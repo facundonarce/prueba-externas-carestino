@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
-import { User, TimeLog, Store, Audit } from '../types';
-import { LogOut, Users, Clock, Search, Shield, Plus, Upload, X, AlertTriangle, ShieldAlert, Shirt, CheckCircle, Store as StoreIcon, Pencil, MapPin, Eye, ExternalLink, Calendar, FileText, ChevronRight } from 'lucide-react';
+import { User, TimeLog, Store, Audit, WorkSchedule } from '../types';
+import { LogOut, Users, Clock, Search, Shield, Plus, Upload, X, AlertTriangle, ShieldAlert, Shirt, CheckCircle, Store as StoreIcon, Pencil, MapPin, Eye, ExternalLink, Calendar, FileText, ChevronRight, Trash2 } from 'lucide-react';
 
 interface AdminDashboardProps {
   user: User;
@@ -35,9 +35,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     role: 'auditor',
     photoUrl: '',
     requiredUniform: 'Buzo o campera negra',
-    assignedStoreIds: []
+    assignedStoreIds: [],
+    workSchedule: []
   });
-  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // -- NEW SHIFT STATE --
+  const [newShift, setNewShift] = useState<WorkSchedule>({
+    day: 'Viernes',
+    start: '20:00',
+    end: '04:00'
+  });
 
   // -- STORE MODAL STATE --
   const [showStoreModal, setShowStoreModal] = useState(false);
@@ -48,6 +55,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     lat: -34.603722, // Default BA
     lng: -58.381592
   });
+
+  const DAYS_OF_WEEK = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
   // --- TIMEZONE HELPER ---
   const formatDateTimeBA = (isoString: string) => {
@@ -99,20 +108,35 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     });
   };
 
+  const addShift = () => {
+    setUserData(prev => ({
+      ...prev,
+      workSchedule: [...(prev.workSchedule || []), newShift]
+    }));
+  };
+
+  const removeShift = (index: number) => {
+    setUserData(prev => ({
+      ...prev,
+      workSchedule: (prev.workSchedule || []).filter((_, i) => i !== index)
+    }));
+  };
+
   const handleOpenCreateUserModal = () => {
     setIsEditingUser(false);
     setUserData({
       role: 'auditor',
       photoUrl: '',
       requiredUniform: 'Buzo o campera negra',
-      assignedStoreIds: []
+      assignedStoreIds: [],
+      workSchedule: []
     });
     setShowUserModal(true);
   };
 
   const handleOpenEditUserModal = (userToEdit: User & { password: string }) => {
     setIsEditingUser(true);
-    setUserData({ ...userToEdit });
+    setUserData({ ...userToEdit, workSchedule: userToEdit.workSchedule || [] });
     setShowUserModal(true);
   };
 
@@ -135,7 +159,6 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       }
 
       setShowUserModal(false);
-      setUserData({ role: 'auditor', photoUrl: '', requiredUniform: 'Buzo o campera negra', assignedStoreIds: [] });
     } else {
       alert("Por favor complete todos los campos incluyendo la foto.");
     }
@@ -769,7 +792,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       {/* User Edit/Create Modal */}
       {showUserModal && (
          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm animate-in fade-in">
-           <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6">
+           <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-center mb-6">
                  <h3 className="text-xl font-bold text-slate-800">{isEditingUser ? 'Editar Usuario' : 'Nuevo Usuario'}</h3>
                  <button onClick={() => setShowUserModal(false)} className="p-2 hover:bg-slate-100 rounded-full">
@@ -870,6 +893,55 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                              {store.name}
                           </button>
                        ))}
+                    </div>
+                 </div>
+
+                 <div className="border-t border-slate-100 pt-4 mt-2">
+                    <label className="block text-xs font-bold text-slate-500 mb-2">Cronograma de Trabajo</label>
+                    
+                    <div className="grid grid-cols-3 gap-2 mb-2">
+                       <select 
+                         value={newShift.day} 
+                         onChange={e => setNewShift({...newShift, day: e.target.value})}
+                         className="p-2 border rounded text-sm"
+                       >
+                         {DAYS_OF_WEEK.map(day => <option key={day} value={day}>{day}</option>)}
+                       </select>
+                       <input 
+                         type="time" 
+                         value={newShift.start} 
+                         onChange={e => setNewShift({...newShift, start: e.target.value})}
+                         className="p-2 border rounded text-sm" 
+                       />
+                       <input 
+                         type="time" 
+                         value={newShift.end} 
+                         onChange={e => setNewShift({...newShift, end: e.target.value})}
+                         className="p-2 border rounded text-sm" 
+                       />
+                    </div>
+                    <button 
+                       type="button" 
+                       onClick={addShift}
+                       className="w-full text-center text-sm text-carestino-600 bg-carestino-50 py-1 rounded font-bold hover:bg-carestino-100 mb-3"
+                    >
+                       + Agregar Turno
+                    </button>
+                    
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                       {userData.workSchedule && userData.workSchedule.length > 0 ? (
+                         userData.workSchedule.map((shift, idx) => (
+                           <div key={idx} className="flex justify-between items-center bg-slate-50 p-2 rounded text-sm border border-slate-100">
+                              <span className="font-bold text-slate-700 w-20">{shift.day}</span>
+                              <span className="text-slate-600">{shift.start} - {shift.end}</span>
+                              <button type="button" onClick={() => removeShift(idx)} className="text-red-400 hover:text-red-600">
+                                 <Trash2 className="w-4 h-4" />
+                              </button>
+                           </div>
+                         ))
+                       ) : (
+                         <p className="text-xs text-slate-400 text-center italic">Sin horarios configurados</p>
+                       )}
                     </div>
                  </div>
 

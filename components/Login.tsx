@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { User, TimeLog } from '../types';
+import { User, TimeLog, WorkSchedule } from '../types';
 import { Lock, User as UserIcon, ArrowRight, Loader2, Camera, ShieldCheck, AlertCircle, LogIn, LogOut, CheckCircle, AlertTriangle, Shirt, ShieldAlert, RotateCw, XCircle, Store, MapPin, Navigation, Clock } from 'lucide-react';
 import { verifyUserIdentity, VerificationResult } from '../services/geminiService';
 import { uploadEvidencePhoto } from '../services/supabaseClient';
@@ -235,6 +235,87 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
     }
   };
 
+  const validateSchedule = (user: User, type: 'INGRESO' | 'EGRESO'): string | null => {
+    if (!user.workSchedule || user.workSchedule.length === 0) return null; // No schedule configured
+
+    const days = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+    const now = new Date();
+    const currentDayName = days[now.getDay()];
+    
+    // Helper to convert "HH:mm" to minutes since start of day
+    const getMinutes = (timeStr: string) => {
+        const [h, m] = timeStr.split(':').map(Number);
+        return h * 60 + m;
+    };
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+    // Strategy: Find the "Logical Work Day"
+    // If it is 3 AM, and user works until 4 AM, the logical day is Yesterday.
+    let logicalDayName = currentDayName;
+    
+    // Check if we are in the early morning (e.g. before 12:00 PM)
+    if (currentMinutes < 12 * 60) {
+        // Look back at yesterday's schedule to see if it extends overnight
+        const yesterdayIndex = (now.getDay() + 6) % 7;
+        const yesterdayName = days[yesterdayIndex];
+        const yesterdayShift = user.workSchedule.find(s => s.day === yesterdayName);
+
+        if (yesterdayShift) {
+            const startM = getMinutes(yesterdayShift.start);
+            const endM = getMinutes(yesterdayShift.end);
+            // If shift crosses midnight (Start > End), and we are before End time
+            if (startM > endM && currentMinutes <= endM + 120) { // +120 mins tolerance for late exit
+                logicalDayName = yesterdayName;
+            }
+        }
+    }
+
+    // Now find the shift for the Logical Day
+    const shift = user.workSchedule.find(s => s.day === logicalDayName);
+
+    if (!shift) {
+        return `Fichada fuera de esquema (No hay turno asignado para ${logicalDayName})`;
+    }
+
+    const startM = getMinutes(shift.start);
+    const endM = getMinutes(shift.end);
+    
+    // Tolerance windows (in minutes)
+    const ENTRY_EARLY_TOLERANCE = 30; 
+    const ENTRY_LATE_TOLERANCE = 120; // 2 hours late allowed before flagging? Or just flag any lateness.
+    const EXIT_EARLY_TOLERANCE = 15;
+
+    if (type === 'INGRESO') {
+        // Case: Entering. Should be close to Start Time.
+        // We calculate difference handling day wrap doesn't matter much for entry usually, unless entering at 23:00 for 23:30 shift
+        // Simple logic:
+        let diff = currentMinutes - startM;
+        if (diff < -ENTRY_EARLY_TOLERANCE) return `Ingreso muy anticipado (${Math.abs(diff)} min antes)`;
+        if (diff > ENTRY_LATE_TOLERANCE) return `Llegada tardía (+${diff} min)`;
+    } else {
+        // Case: Exiting. Should be close to End Time.
+        // Handle midnight wrap for End Time calculation relative to current time
+        let targetEndM = endM;
+        let effectiveCurrentM = currentMinutes;
+        
+        // If shift crosses midnight (Start > End) and we are currently in the "next day" morning
+        if (startM > endM && currentMinutes < startM) { 
+             // We are in the morning after. 
+             // Example: End 04:00 (240m), Current 03:50 (230m). Diff = -10.
+        } else if (startM > endM && currentMinutes > startM) {
+             // We are still in the evening before midnight.
+             // Example: End 04:00 (240m), Current 23:00 (1380m). 
+             // We need to project End time to tomorrow (End + 24h)
+             targetEndM += 24 * 60;
+        }
+
+        let diff = effectiveCurrentM - targetEndM;
+        if (diff < -EXIT_EARLY_TOLERANCE) return `Salida anticipada (${Math.abs(diff)} min antes)`;
+    }
+
+    return null; // OK
+  };
+
   const processSuccessfulLog = async (result: VerificationResult, imageBase64: string) => {
     if (!pendingUser) return;
 
@@ -257,7 +338,10 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
     const locationFailed = locationStatus !== 'OK';
     const isWarning = result.verified && (result.message.includes('AVISO') || result.message.includes('sin foto') || result.message.includes('Advertencia'));
     
-    const hasIncident = identityFailed || locationFailed || isWarning;
+    // --- SCHEDULE VALIDATION ---
+    const scheduleIncident = clockAction ? validateSchedule(pendingUser, clockAction) : null;
+    
+    const hasIncident = identityFailed || locationFailed || isWarning || !!scheduleIncident;
     
     let incidentDetailsParts = [];
     if (identityFailed) incidentDetailsParts.push(result.message || "Incidencia de identidad forzada");
@@ -266,6 +350,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
       if (locationStatus === 'ERROR') incidentDetailsParts.push(`Error GPS: ${locationErrorMsg}`);
     }
     if (isWarning) incidentDetailsParts.push(result.message);
+    if (scheduleIncident) incidentDetailsParts.push(scheduleIncident);
 
     const finalIncidentDetail = incidentDetailsParts.length > 0 ? incidentDetailsParts.join('. ') : undefined;
     
