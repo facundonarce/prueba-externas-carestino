@@ -108,16 +108,17 @@ export const AuditForm: React.FC<AuditFormProps> = ({ onCancel, stores, user }) 
       
       setIsSaving(true);
       try {
-          const success = await saveAudit(formData, report, user.username);
-          if (success) {
+          const result = await saveAudit(formData, report, user.username);
+          if (result.success) {
               alert("Auditoría guardada exitosamente.");
               onCancel(); // Volver al dashboard
           } else {
-              alert("Hubo un error guardando la auditoría. Intente nuevamente.");
+              alert(`Error al guardar: ${result.error || 'Intente nuevamente.'}`);
+              // Stay on the same screen so user doesn't lose data
           }
       } catch (e) {
           console.error(e);
-          alert("Error de conexión.");
+          alert("Error de conexión crítico.");
       } finally {
           setIsSaving(false);
       }

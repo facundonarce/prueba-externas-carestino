@@ -96,7 +96,7 @@ export const uploadEvidencePhoto = async (base64Image: string, userId: string): 
 /**
  * Guarda una auditoría completa en la base de datos, incluyendo la subida de todas las fotos asociadas.
  */
-export const saveAudit = async (auditData: AuditFormState, report: AuditReport, userId: string): Promise<boolean> => {
+export const saveAudit = async (auditData: AuditFormState, report: AuditReport, userId: string): Promise<{ success: boolean; error?: string }> => {
     try {
         // 1. Subir todas las fotos primero
         const photoUrls: Record<string, string> = {};
@@ -125,13 +125,13 @@ export const saveAudit = async (auditData: AuditFormState, report: AuditReport, 
 
         if (error) {
             console.error("Error saving audit record:", error);
-            throw error;
+            return { success: false, error: error.message || JSON.stringify(error) };
         }
 
-        return true;
+        return { success: true };
 
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error in saveAudit process:", error);
-        return false;
+        return { success: false, error: error.message || "Error desconocido" };
     }
 };
