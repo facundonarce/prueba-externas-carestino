@@ -6,7 +6,7 @@ import { Dashboard } from './components/Dashboard';
 import { AuditForm } from './components/AuditForm';
 import { AdminDashboard } from './components/AdminDashboard';
 import { supabase } from './services/supabaseClient';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 
 const App: React.FC = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -17,15 +17,19 @@ const App: React.FC = () => {
   const [stores, setStores] = useState<Store[]>([]);
   const [audits, setAudits] = useState<Audit[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
+  const [initError, setInitError] = useState<string | null>(null);
 
   // --- DATA FETCHING ---
   const fetchData = async () => {
     setIsLoadingData(true);
+    setInitError(null);
     try {
       // 1. Fetch Users
       const { data: usersData, error: usersError } = await supabase.from('users').select('*');
       if (usersError) {
-        console.error('Error fetching users:', usersError.message || usersError);
+        const errorMsg = usersError.message || JSON.stringify(usersError);
+        console.error('Error fetching users:', errorMsg);
+        setInitError(`Error cargando usuarios: ${errorMsg}`);
       }
       
       const userMap: Record<string, User & { password: string }> = {};
@@ -48,7 +52,7 @@ const App: React.FC = () => {
       // 2. Fetch Stores
       const { data: storesData, error: storesError } = await supabase.from('stores').select('*');
       if (storesError) {
-        console.error('Error fetching stores:', storesError.message || storesError);
+        console.error('Error fetching stores:', storesError.message || JSON.stringify(storesError));
       }
       
       if (storesData) {
@@ -68,7 +72,7 @@ const App: React.FC = () => {
         .order('timestamp', { ascending: false });
 
       if (logsError) {
-        console.error('Error fetching logs:', logsError.message || logsError);
+        console.error('Error fetching logs:', logsError.message || JSON.stringify(logsError));
       }
       
       if (logsData) {
@@ -99,7 +103,7 @@ const App: React.FC = () => {
         .order('created_at', { ascending: false });
         
       if (auditsError) {
-        console.error('Error fetching audits:', auditsError.message || auditsError);
+        console.error('Error fetching audits:', auditsError.message || JSON.stringify(auditsError));
       }
       
       if (auditsData) {
@@ -115,8 +119,9 @@ const App: React.FC = () => {
           })));
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error("Critical error loading data:", error);
+      setInitError(error.message || "Error de conexión desconocido");
     } finally {
       setIsLoadingData(false);
     }
@@ -151,7 +156,7 @@ const App: React.FC = () => {
     });
 
     if (error) {
-      alert("Error creando usuario: " + error.message);
+      alert("Error creando usuario: " + (error.message || JSON.stringify(error)));
     } else {
       // Optimistic update or refetch
       fetchData();
@@ -170,7 +175,7 @@ const App: React.FC = () => {
     }).eq('username', updatedUser.username);
 
     if (error) {
-      alert("Error actualizando usuario: " + error.message);
+      alert("Error actualizando usuario: " + (error.message || JSON.stringify(error)));
     } else {
       fetchData();
     }
@@ -199,7 +204,7 @@ const App: React.FC = () => {
 
     if (error) {
       console.error("Error saving log:", error);
-      alert("Hubo un error guardando la fichada en la nube, pero se procesó localmente.");
+      alert("Hubo un error guardando la fichada en la nube: " + (error.message || "Error desconocido"));
     }
     
     // Always update local state for immediate feedback
@@ -216,7 +221,7 @@ const App: React.FC = () => {
     });
 
     if (error) {
-      alert("Error creando tienda: " + error.message);
+      alert("Error creando tienda: " + (error.message || JSON.stringify(error)));
     } else {
       fetchData();
     }
@@ -231,7 +236,7 @@ const App: React.FC = () => {
     }).eq('id', updatedStore.id);
 
     if (error) {
-      alert("Error actualizando tienda: " + error.message);
+      alert("Error actualizando tienda: " + (error.message || JSON.stringify(error)));
     } else {
       fetchData();
     }
@@ -242,6 +247,26 @@ const App: React.FC = () => {
       <div className="min-h-screen flex items-center justify-center bg-slate-100 flex-col gap-4">
         <Loader2 className="w-10 h-10 animate-spin text-carestino-500" />
         <p className="text-slate-500 font-medium">Conectando con la base de datos...</p>
+      </div>
+    );
+  }
+
+  if (initError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md text-center">
+          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <AlertTriangle className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">Error de Inicialización</h2>
+          <p className="text-slate-500 mb-6">{initError}</p>
+          <button 
+            onClick={fetchData}
+            className="bg-carestino-500 text-white px-6 py-2 rounded-lg font-bold hover:bg-carestino-600 transition-colors"
+          >
+            Reintentar
+          </button>
+        </div>
       </div>
     );
   }

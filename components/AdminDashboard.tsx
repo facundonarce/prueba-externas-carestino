@@ -51,10 +51,29 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
   // --- TIMEZONE HELPER ---
   const formatDateTimeBA = (isoString: string) => {
-    const date = new Date(isoString);
-    const time = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Buenos_Aires' });
-    const day = date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Buenos_Aires' });
-    return { time, day };
+    try {
+      if (!isoString) return { time: '--:--', day: '--/--/--' };
+      const date = new Date(isoString);
+      
+      // Ensure we are converting to Buenos Aires time
+      const time = date.toLocaleTimeString('es-AR', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        timeZone: 'America/Buenos_Aires' 
+      });
+      
+      const day = date.toLocaleDateString('es-AR', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: '2-digit', 
+        timeZone: 'America/Buenos_Aires' 
+      });
+      
+      return { time, day };
+    } catch (e) {
+      console.error("Date parsing error:", e);
+      return { time: 'Error', day: 'Fecha' };
+    }
   };
 
   // --- USER HANDLERS ---
@@ -596,6 +615,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       <div className="flex items-center gap-2 text-sm text-slate-600">
                          <Calendar className="w-4 h-4" />
                          {formatDateTimeBA(selectedLog.timestamp).day} {formatDateTimeBA(selectedLog.timestamp).time}
+                         <span className="text-xs font-bold text-carestino-600">(ARG)</span>
                       </div>
                    </div>
                 </div>
@@ -715,6 +735,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                      <span className="text-xs text-slate-400 font-bold uppercase">Fecha</span>
                                      <p className="font-medium text-slate-700">
                                          {formatDateTimeBA(selectedAudit.created_at).day} {formatDateTimeBA(selectedAudit.created_at).time}
+                                         <span className="text-xs ml-1 text-slate-400">(ARG)</span>
                                      </p>
                                  </div>
                              </div>
