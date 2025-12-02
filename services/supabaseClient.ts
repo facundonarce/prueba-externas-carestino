@@ -65,7 +65,9 @@ export const uploadEvidencePhoto = async (base64Image: string, userId: string): 
     try {
         const blob = base64ToBlob(base64Image);
         const timestamp = Date.now();
-        const fileName = `${userId}_${timestamp}.jpg`;
+        // ADDED: Random string to avoid collision in rapid loops
+        const randomStr = Math.random().toString(36).substring(2, 8);
+        const fileName = `${userId}_${timestamp}_${randomStr}.jpg`;
         const filePath = `${fileName}`; // Se guarda en la raíz del bucket fichadas
 
         const { data, error } = await supabase.storage
