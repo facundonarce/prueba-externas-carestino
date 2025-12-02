@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { User, TimeLog } from '../types';
 import { Lock, User as UserIcon, ArrowRight, Loader2, Camera, ShieldCheck, AlertCircle, LogIn, LogOut, CheckCircle, AlertTriangle, Shirt, ShieldAlert, RotateCw, XCircle, Store, MapPin, Navigation, Clock } from 'lucide-react';
@@ -481,7 +482,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
              <div>
                <p className="text-xs font-bold text-blue-800 uppercase">Turno en curso</p>
                <p className="text-xs text-blue-600">
-                 Ingreso: {new Date(lastLog.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} 
+                 Ingreso: {new Date(lastLog.timestamp).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit', timeZone: 'America/Buenos_Aires'})} 
                  {lastLog.storeName ? ` en ${lastLog.storeName}` : ''}
                </p>
              </div>
@@ -494,7 +495,7 @@ export const Login: React.FC<LoginProps> = ({ onLogin, userDatabase, onClockLog,
              <div>
                <p className="text-xs font-bold text-slate-700 uppercase">Fuera de Turno</p>
                <p className="text-xs text-slate-500">
-                 {lastLog ? `Última salida: ${new Date(lastLog.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}` : 'Sin registros previos.'}
+                 {lastLog ? `Última salida: ${new Date(lastLog.timestamp).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit', timeZone: 'America/Buenos_Aires'})}` : 'Sin registros previos.'}
                </p>
              </div>
           </div>

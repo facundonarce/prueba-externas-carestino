@@ -24,7 +24,9 @@ const App: React.FC = () => {
     try {
       // 1. Fetch Users
       const { data: usersData, error: usersError } = await supabase.from('users').select('*');
-      if (usersError) console.error('Error fetching users:', usersError);
+      if (usersError) {
+        console.error('Error fetching users:', usersError.message || usersError);
+      }
       
       const userMap: Record<string, User & { password: string }> = {};
       if (usersData) {
@@ -45,7 +47,10 @@ const App: React.FC = () => {
 
       // 2. Fetch Stores
       const { data: storesData, error: storesError } = await supabase.from('stores').select('*');
-      if (storesError) console.error('Error fetching stores:', storesError);
+      if (storesError) {
+        console.error('Error fetching stores:', storesError.message || storesError);
+      }
+      
       if (storesData) {
         setStores(storesData.map((s: any) => ({
           id: s.id,
@@ -62,7 +67,10 @@ const App: React.FC = () => {
         .select('*')
         .order('timestamp', { ascending: false });
 
-      if (logsError) console.error('Error fetching logs:', logsError);
+      if (logsError) {
+        console.error('Error fetching logs:', logsError.message || logsError);
+      }
+      
       if (logsData) {
         setTimeLogs(logsData.map((l: any) => ({
           id: l.id,
@@ -90,7 +98,10 @@ const App: React.FC = () => {
         .select('*')
         .order('created_at', { ascending: false });
         
-      if (auditsError) console.error('Error fetching audits:', auditsError);
+      if (auditsError) {
+        console.error('Error fetching audits:', auditsError.message || auditsError);
+      }
+      
       if (auditsData) {
           setAudits(auditsData.map((a: any) => ({
               id: a.id,

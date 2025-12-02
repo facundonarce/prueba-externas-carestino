@@ -49,6 +49,14 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
     lng: -58.381592
   });
 
+  // --- TIMEZONE HELPER ---
+  const formatDateTimeBA = (isoString: string) => {
+    const date = new Date(isoString);
+    const time = date.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', timeZone: 'America/Buenos_Aires' });
+    const day = date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'America/Buenos_Aires' });
+    return { time, day };
+  };
+
   // --- USER HANDLERS ---
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -256,14 +264,16 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                     <th className="px-6 py-4 font-semibold">Empleado</th>
                     <th className="px-6 py-4 font-semibold">Sucursal</th>
                     <th className="px-6 py-4 font-semibold">Tipo</th>
-                    <th className="px-6 py-4 font-semibold">Hora</th>
+                    <th className="px-6 py-4 font-semibold">Hora (ARG)</th>
                     <th className="px-6 py-4 font-semibold">Eficiencia ID</th>
                     <th className="px-6 py-4 font-semibold">Uniforme</th>
                     <th className="px-6 py-4 font-semibold text-right">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {logs.map((log) => (
+                  {logs.map((log) => {
+                    const { time, day } = formatDateTimeBA(log.timestamp);
+                    return (
                     <tr key={log.id} className={`hover:bg-slate-50 transition-colors ${log.hasIncident ? 'bg-red-50' : !log.uniformCompliant ? 'bg-yellow-50' : ''}`}>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -295,8 +305,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </span>
                       </td>
                       <td className="px-6 py-4 text-slate-600 font-medium text-sm">
-                        {new Date(log.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        <div className="text-xs text-slate-400">{new Date(log.timestamp).toLocaleDateString()}</div>
+                        {time}
+                        <div className="text-xs text-slate-400">{day}</div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
@@ -336,7 +346,8 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                         </button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -361,7 +372,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <table className="w-full text-left">
                 <thead className="bg-slate-50 text-slate-500 text-xs uppercase tracking-wider">
                    <tr>
-                    <th className="px-6 py-4 font-semibold">Fecha</th>
+                    <th className="px-6 py-4 font-semibold">Fecha (ARG)</th>
                     <th className="px-6 py-4 font-semibold">Sucursal</th>
                     <th className="px-6 py-4 font-semibold">Auditor</th>
                     <th className="px-6 py-4 font-semibold">Puntaje</th>
@@ -373,11 +384,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                    {audits.map((audit) => {
                      const store = stores.find(s => s.id === audit.store_id);
                      const auditor = userDatabase[audit.user_id];
+                     const { time, day } = formatDateTimeBA(audit.created_at);
+                     
                      return (
                        <tr key={audit.id} className="hover:bg-slate-50 transition-colors">
                           <td className="px-6 py-4 text-sm text-slate-600">
-                             {new Date(audit.created_at).toLocaleDateString()}
-                             <div className="text-xs text-slate-400">{new Date(audit.created_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</div>
+                             {day}
+                             <div className="text-xs text-slate-400">{time}</div>
                           </td>
                           <td className="px-6 py-4 font-bold text-slate-700">
                              {store ? store.name : audit.store_id}
@@ -582,7 +595,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                       </div>
                       <div className="flex items-center gap-2 text-sm text-slate-600">
                          <Calendar className="w-4 h-4" />
-                         {new Date(selectedLog.timestamp).toLocaleString()}
+                         {formatDateTimeBA(selectedLog.timestamp).day} {formatDateTimeBA(selectedLog.timestamp).time}
                       </div>
                    </div>
                 </div>
@@ -700,7 +713,9 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
                                  </div>
                                  <div>
                                      <span className="text-xs text-slate-400 font-bold uppercase">Fecha</span>
-                                     <p className="font-medium text-slate-700">{new Date(selectedAudit.created_at).toLocaleString()}</p>
+                                     <p className="font-medium text-slate-700">
+                                         {formatDateTimeBA(selectedAudit.created_at).day} {formatDateTimeBA(selectedAudit.created_at).time}
+                                     </p>
                                  </div>
                              </div>
                          </div>
